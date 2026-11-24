@@ -8,7 +8,7 @@ const JB = (() => {
   const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
 
   const MAX_FILE = 5 * 1024 * 1024;
-  const MAX_IMAGES = 4;
+  const MAX_IMAGES = 20;
 
   // FUNGSI BANTU
   const esc = (s) => {
@@ -353,20 +353,28 @@ const JB = (() => {
                             ? `
                                     <li>
                                         <a class="dropdown-item"
-                                            href="jual.html">
-                                            ➕ Pasang Iklan
+                                            href="dashboard.html">
+                                            📊 Dashboard Penjual
                                         </a>
                                     </li>
 
                                     <li>
                                         <a class="dropdown-item"
-                                            href="jual.html#iklan-saya">
-                                            📋 Iklan Saya
+                                            href="jual.html">
+                                            ➕ Pasang Iklan
                                         </a>
                                     </li>
                                 `
                             : ""
                         }
+
+                        <li>
+                            <a class="dropdown-item d-flex justify-content-between align-items-center gap-3"
+                                href="chat.html">
+                                💬 Chat
+                                <span class="badge text-bg-danger d-none" id="chatBadge"></span>
+                            </a>
+                        </li>
 
                         <li>
                             <hr class="dropdown-divider">
@@ -386,6 +394,15 @@ const JB = (() => {
             `;
 
       document.getElementById("btnLogout")?.addEventListener("click", logout);
+
+      unreadCount().then((n) => {
+        const b = document.getElementById("chatBadge");
+
+        if (b && n > 0) {
+          b.textContent = n;
+          b.classList.remove("d-none");
+        }
+      });
     });
   }
 
@@ -435,6 +452,90 @@ const JB = (() => {
     });
   }
 
+  // CHAT
+  async function unreadCount() {
+    try {
+      return (await request("api/chat.php?unread=1")).unread || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function timeAgo(ms) {
+    const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+
+    if (s < 60) return "baru saja";
+    if (s < 3600) return Math.floor(s / 60) + " mnt lalu";
+    if (s < 86400) return Math.floor(s / 3600) + " jam lalu";
+
+    return new Date(ms).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+    });
+  }
+
+  function clockTime(ms) {
+    return new Date(ms).toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  // KARTU INSPEKTOR
+  function inspectorCardHTML(i) {
+    const tarif = [];
+
+    if (i.priceMotor) tarif.push(`🏍 ${rupiah(i.priceMotor)}`);
+    if (i.priceCar) tarif.push(`🚗 ${rupiah(i.priceCar)}`);
+
+    const initial = esc(i.name.charAt(0).toUpperCase());
+
+    return `
+            <div class="card inspector-card h-100">
+                <div class="card-body">
+
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <span class="inspector-avatar">${initial}</span>
+
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold">${esc(i.name)}</div>
+                            <div class="small text-secondary">📍 ${esc(i.city)}</div>
+                        </div>
+
+                        <span class="badge text-bg-success">${esc(i.status)}</span>
+                    </div>
+
+                    <p class="small text-secondary mb-2">${esc(i.bio || "")}</p>
+
+                    <div class="small mb-1">
+                        ⭐ <b>${i.rating.toFixed(1)}</b>
+                        · ${i.inspections} inspeksi
+                        · ${i.experience} thn pengalaman
+                    </div>
+
+                    <div class="small mb-1">
+                        🔧 ${esc(i.specialty)}
+                    </div>
+
+                    <div class="small fw-semibold mb-2">
+                        ${tarif.join(" &nbsp; ") || "Tarif hubungi inspektor"}
+                    </div>
+
+                    <div class="small">
+                        📞 <a href="tel:${esc(i.contact)}">${esc(i.contact)}</a>
+                    </div>
+
+                </div>
+            </div>
+        `;
+  }
+
+  async function inspectors() {
+    const d = await request("api/inspectors.php");
+
+    return d.inspectors || [];
+  }
+
   // INISIALISASI
   document.addEventListener("DOMContentLoaded", renderAuthNav);
 
@@ -452,6 +553,11 @@ const JB = (() => {
     paginate,
     renderPager,
     cardHTML,
+    inspectorCardHTML,
+    inspectors,
+    unreadCount,
+    timeAgo,
+    clockTime,
     compressImage,
     ALLOWED,
     MAX_FILE,

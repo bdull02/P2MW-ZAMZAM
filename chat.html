@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat — JB GARAGE</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="assets/style.css" rel="stylesheet" />
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-jb sticky-top">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="index.php"><img src="assets/logo-garasi-jb.jpg" alt="Logo Garasi JB" /><span>JB GARAGE</span></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuUtama" aria-controls="menuUtama" aria-expanded="false" aria-label="Buka menu"><span class="navbar-toggler-icon"></span></button>
+      <div class="collapse navbar-collapse" id="menuUtama">
+        <ul class="navbar-nav ms-auto align-items-lg-center">
+          <li class="nav-item"><a class="nav-link" href="index.php#beranda">Beranda</a></li>
+          <li class="nav-item"><a class="nav-link" href="index.php#tentang">Tentang</a></li>
+          <li class="nav-item"><a class="nav-link" href="index.php#listing">Listing</a></li>
+          <li class="nav-item"><a class="nav-link" href="index.php#inspektor">Inspektor</a></li>
+          <li class="nav-item"><a class="nav-link" href="index.php#kontak">Kontak</a></li>
+        </ul>
+        <ul class="navbar-nav ms-lg-3 align-items-lg-center gap-lg-2" id="authNav"></ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <h1 class="h3 section-title">Chat &amp; Negosiasi</h1>
+    <div class="row g-3 chat-wrap">
+      <div class="col-lg-4">
+        <div class="card h-100"><div class="card-header bg-white fw-bold">Percakapan</div>
+          <div class="list-group list-group-flush chat-list" id="convList"></div>
+        </div>
+      </div>
+      <div class="col-lg-8">
+        <div class="card h-100" id="threadCard">
+          <div class="card-body d-flex align-items-center justify-content-center text-secondary" id="emptyThread" style="min-height:400px">Pilih percakapan di sebelah kiri.</div>
+          <div class="d-none" id="thread">
+            <div class="card-header bg-white d-flex align-items-center gap-3" id="threadHead"></div>
+            <div class="chat-messages" id="msgs"></div>
+            <div class="card-footer bg-white">
+              <div id="sendErr" class="text-danger small mb-1"></div>
+              <form id="formSend" class="row g-2" novalidate>
+                <div class="col-12"><textarea id="msgInput" class="form-control" rows="2" maxlength="1000" placeholder="Tulis pesan…" required></textarea></div>
+                <div class="col-7 col-md-6"><div class="input-group input-group-sm"><span class="input-group-text">Tawaran Rp</span><input type="number" id="offerInput" class="form-control" min="100000" step="50000" placeholder="opsional" /></div></div>
+                <div class="col-5 col-md-6 text-end"><button type="submit" class="btn btn-primary btn-sm" id="btnSend">Kirim</button></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer class="py-4 mt-4"><div class="container small text-center">© 2026 JB GARAGE · Tugas Praktikum 6 — Bootstrap 5</div></footer>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    const {esc,rupiah}=JB; const $=id=>document.getElementById(id);
+    let me=null,cur=null,last=0,timer=null,convs=[];
+    const qid=Number(new URLSearchParams(location.search).get('c'))||0;
+    async function loadList(){
+      convs=(await JB.request('api/chat.php')).conversations;
+      $('convList').innerHTML=convs.length?convs.map(c=>`<div class="list-group-item chat-item d-flex gap-3 align-items-center ${c.id===cur?'active':''}" data-id="${c.id}">${c.image?`<img src="${esc(c.image)}" class="chat-thumb" alt="">`:'<div class="chat-thumb">🏍</div>'}<div class="flex-grow-1 min-w-0"><div class="d-flex justify-content-between gap-2"><span class="fw-semibold text-truncate">${esc(c.otherName)}</span>${c.unread?`<span class="badge text-bg-danger">${c.unread}</span>`:''}</div><div class="small text-secondary text-truncate">${esc(c.title)} ${c.year} · ${c.asSeller?'pembeli':'penjual'}</div><div class="small text-truncate">${esc(c.lastText||'')}</div></div></div>`).join(''):'<div class="list-group-item text-secondary">Belum ada percakapan. Klik sebuah iklan di katalog lalu tekan Kirim Pesan untuk memulai chat.</div>';
+      $('convList').querySelectorAll('.chat-item').forEach(el=>el.addEventListener('click',()=>openConv(Number(el.dataset.id))));
+    }
+    function bubble(m){const mine=m.senderId===me;return `<div class="d-flex"><div class="bubble ${mine?'mine':'theirs'}">${m.offer?`<div class="offer">💰 Tawaran ${rupiah(m.offer)}</div><br>`:''}${esc(m.text)}<div class="meta">${JB.clockTime(m.createdAt)}</div></div></div>`}
+    async function fetchMsgs(reset){
+      const d=await JB.request(`api/chat.php?c=${cur}&after=${reset?0:last}`);
+      if(reset){const c=d.conversation,other=d.me===c.sellerId?c.buyerName:c.sellerName,role=d.me===c.sellerId?'Pembeli':'Penjual';
+        $('threadHead').innerHTML=`${c.image?`<img src="${esc(c.image)}" class="chat-thumb" alt="">`:'<div class="chat-thumb">🏍</div>'}<div><div class="fw-bold">${esc(other)} <span class="badge text-bg-secondary fw-normal">${role}</span></div><div class="small text-secondary">${esc(c.title)} ${c.year} · ${rupiah(c.price)} · ${esc(c.status)}</div></div>`;
+        $('msgs').innerHTML='';}
+      if(d.messages.length){const box=$('msgs'),bottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;box.insertAdjacentHTML('beforeend',d.messages.map(bubble).join(''));last=d.messages[d.messages.length-1].id;if(reset||bottom)box.scrollTop=box.scrollHeight;loadList().catch(()=>{})}
+    }
+    async function openConv(id){
+      cur=id;last=0;history.replaceState(null,'','chat.html?c='+id);
+      $('emptyThread').classList.add('d-none');$('thread').classList.remove('d-none');
+      try{await fetchMsgs(true)}catch(e){alert(e.message);return}
+      await loadList();clearInterval(timer);timer=setInterval(()=>fetchMsgs(false).catch(()=>{}),4000);
+    }
+    $('formSend').addEventListener('submit',async e=>{e.preventDefault();$('sendErr').textContent='';const txt=$('msgInput').value.trim();if(!txt||!cur)return;const b=$('btnSend');b.disabled=true;
+      try{await JB.request('api/chat.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conversationId:cur,message:txt,offer:$('offerInput').value})});$('msgInput').value='';$('offerInput').value='';await fetchMsgs(false)}catch(err){$('sendErr').textContent=err.message}finally{b.disabled=false}});
+    $('msgInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('formSend').requestSubmit()}});
+    JB.requireLogin().then(async u=>{if(!u)return;me=u.id;try{await loadList()}catch(e){alert(e.message);return}
+      if(qid&&convs.some(c=>c.id===qid))openConv(qid);setInterval(()=>loadList().catch(()=>{}),15000)});
+  </script>
+</body>
+</html>

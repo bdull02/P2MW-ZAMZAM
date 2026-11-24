@@ -1,0 +1,14 @@
+# Mengizinkan unggah hingga 20 foto per iklan (XAMPP / Apache + mod_php).
+# Jika tetap gagal, ubah nilai yang sama di php.ini lalu restart Apache.
+<IfModule mod_php.c>
+  php_value upload_max_filesize 8M
+  php_value post_max_size 128M
+  php_value max_file_uploads 25
+  php_value memory_limit 256M
+</IfModule>
+<IfModule mod_php8.c>
+  php_value upload_max_filesize 8M
+  php_value post_max_size 128M
+  php_value max_file_uploads 25
+  php_value memory_limit 256M
+</IfModule>

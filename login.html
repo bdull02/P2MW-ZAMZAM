@@ -18,7 +18,7 @@
           <li class="nav-item"><a class="nav-link" href="index.php#beranda">Beranda</a></li>
           <li class="nav-item"><a class="nav-link" href="index.php#tentang">Tentang</a></li>
           <li class="nav-item"><a class="nav-link" href="index.php#listing">Listing</a></li>
-          <li class="nav-item"><a class="nav-link" href="index.php#portofolio">Portofolio</a></li>
+          <li class="nav-item"><a class="nav-link" href="index.php#inspektor">Inspektor</a></li>
           <li class="nav-item"><a class="nav-link" href="index.php#kontak">Kontak</a></li>
         </ul>
         <ul class="navbar-nav ms-lg-3 align-items-lg-center gap-lg-2" id="authNav"></ul>
@@ -44,7 +44,7 @@
         <button type="submit" class="btn btn-primary w-100" id="btnLogin">Masuk</button>
       </form>
       <p class="text-center small mt-3 mb-0">Belum punya akun? <a href="register.html">Daftar sekarang</a></p>
-      <div class="alert alert-secondary small mt-3 mb-0"><b>Akun demo</b> (password: <code>Demo1234</code>)<br>Penjual: penjual@jbgarage.test<br>Pembeli: pembeli@jbgarage.test</div>
+      <div class="alert alert-secondary small mt-3 mb-0"><b>Akun demo</b> (password: <code>Demo1234</code>)<br>Penjual: penjual@jbgarage.test<br>Pembeli: pembeli@jbgarage.test<br>Pembeli 2: pembeli2@jbgarage.test</div>
     </div></div>
   </main>
   <footer class="py-4 mt-4"><div class="container small text-center">© 2026 JB GARAGE · Tugas Praktikum 6 — Bootstrap 5</div></footer>
@@ -68,7 +68,7 @@
       const r = await JB.login(email.value, password.value, remember.checked);
       if (!r.success) { errBox.textContent = r.message || 'Login gagal.'; errBox.classList.remove('d-none'); btn.disabled = false; btn.textContent = 'Masuk'; return; }
       let next = q.get('next') || 'index.php';
-      if (!/^(index\.php|jual\.html)$/i.test(next)) next = 'index.php';   // cegah open-redirect
+      if (!/^(index\.php|jual\.html|dashboard\.html|chat\.html)$/i.test(next)) next = 'index.php';   // cegah open-redirect
       location.href = next;
     });
   </script>

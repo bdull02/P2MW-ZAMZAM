@@ -32,8 +32,18 @@ if ($method === 'GET') {
 
         $items = [];
 
+        // Jumlah pembeli yang chat/negosiasi per iklan
+        $cc = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM conversations
+            WHERE listing_id = ?
+        ");
+
         foreach ($ids as $id) {
-            $items[] = listing_row($pdo, $id);
+            $row = listing_row($pdo, $id);
+            $cc->execute([$id]);
+            $row['chatCount'] = (int) $cc->fetchColumn();
+            $items[] = $row;
         }
 
         respond([
@@ -107,11 +117,11 @@ if ($method === 'POST') {
         empty($_FILES['images']) ||
         !is_array($_FILES['images']['name']) ||
         count(array_filter($_FILES['images']['name'])) < 1 ||
-        count(array_filter($_FILES['images']['name'])) > 4
+        count(array_filter($_FILES['images']['name'])) > 20
     ) {
         respond([
             'success' => false,
-            'message' => 'Unggah 1 sampai 4 foto.'
+            'message' => 'Unggah 1 sampai 20 foto.'
         ], 422);
     }
 
