@@ -31,18 +31,33 @@ const JB = (() => {
 
   // REQUEST API
   async function request(url, options = {}) {
-    const r = await fetch(url, {
-      credentials: "same-origin",
-      ...options,
-    });
+    let r;
+    let text = "";
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      r = await fetch(url, {
+        credentials: "same-origin",
+        ...options,
+      });
+
+      text = await r.text();
+
+      // Retry sekali jika server serverless sedang cold-start / transient 502-504
+      if (attempt === 0 && (r.status === 502 || r.status === 503 || r.status === 504 || text.trim() === "")) {
+        await new Promise((res) => setTimeout(res, 600));
+        continue;
+      }
+
+      break;
+    }
 
     let d;
 
     try {
-      d = await r.json();
+      d = JSON.parse(text);
     } catch {
       throw new Error(
-        "Respons server tidak valid. Pastikan Apache dan PHP berjalan.",
+        `Server sedang sibuk (HTTP ${r.status}). Silakan coba lagi beberapa saat.`,
       );
     }
 
