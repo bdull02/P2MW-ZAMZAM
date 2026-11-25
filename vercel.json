@@ -1,0 +1,18 @@
+{
+  "functions": {
+    "api/*.php": {
+      "runtime": "vercel-php@0.9.0",
+      "includeFiles": "config/**"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/index.php",
+      "destination": "/index.html"
+    }
+  ]
+}
