@@ -162,14 +162,6 @@ if ($method === 'POST') {
         $id = (int) $q->fetchColumn();
 
 
-        // Menyiapkan folder upload
-        $dir = __DIR__ . '/../uploads';
-
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-
-
         // Format gambar yang diizinkan
         $allowed = [
             'image/jpeg' => 'jpg',
@@ -178,7 +170,21 @@ if ($method === 'POST') {
         ];
 
 
-        // Proses upload setiap foto
+        // Proses upload setiap foto ke Supabase (kompatibel dengan filesystem read-only Vercel)
+        $blobStmt = $pdo->prepare("
+            INSERT INTO listing_image_blobs (listing_id, mime_type, data)
+            VALUES (?, ?, decode(?, 'hex'))
+            RETURNING id
+        ");
+
+        $im = $pdo->prepare("
+            INSERT INTO listing_images (
+                listing_id,
+                image_path
+            )
+            VALUES (?, ?)
+        ");
+
         foreach ($_FILES['images']['tmp_name'] as $i => $tmp) {
 
             // Memeriksa error upload
@@ -207,35 +213,28 @@ if ($method === 'POST') {
             }
 
 
-            // Membuat nama file unik
-            $filename = 'listing_' . $id . '_'
-                . bin2hex(random_bytes(8))
-                . '.' . $allowed[$mime];
+            // Membaca isi file gambar
+            $bytes = file_get_contents($tmp);
 
-
-            // Memindahkan foto ke folder uploads
-            if (!move_uploaded_file($tmp, $dir . '/' . $filename)) {
+            if ($bytes === false || $bytes === '') {
                 throw new Exception(
-                    'Tidak dapat menyimpan foto.'
+                    'Tidak dapat membaca file foto.'
                 );
             }
 
 
-            // Menyimpan lokasi foto
-            $path = 'uploads/' . $filename;
+            // Menyimpan foto ke database Supabase
+            $blobStmt->execute([
+                $id,
+                $mime,
+                bin2hex($bytes)
+            ]);
 
-            $saved[] = $dir . '/' . $filename;
+            $blobId = (int) $blobStmt->fetchColumn();
+            $path = 'api/image.php?id=' . $blobId;
 
 
-            // Menyimpan lokasi foto ke database
-            $im = $pdo->prepare("
-                INSERT INTO listing_images (
-                    listing_id,
-                    image_path
-                )
-                VALUES (?, ?)
-            ");
-
+            // Menyimpan URL foto ke tabel listing_images
             $im->execute([
                 $id,
                 $path
