@@ -58,13 +58,15 @@ if (
 session_regenerate_id(true);
 
 
-// Menyimpan data user ke session
+// Menyimpan data user ke session dan cookie bertanda tangan (untuk serverless Vercel)
 $_SESSION['user'] = [
     'id' => (int) $u['id'],
     'name' => $u['nama_lengkap'],
     'email' => $u['email'],
     'role' => $u['role']
 ];
+
+set_auth_cookie($_SESSION['user'], !empty($d['remember']));
 
 
 // Mengirim response login berhasil

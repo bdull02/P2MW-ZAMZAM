@@ -1,10 +1,18 @@
 <?php
 
+// Jangan tampilkan warning PHP ke output agar respons JSON tidak rusak
+ini_set('display_errors', '0');
+
+function is_https()
+{
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+}
+
 // Memulai session
 if (session_status() !== PHP_SESSION_ACTIVE) {
 
-    $secure = !empty($_SERVER['HTTPS'])
-        && $_SERVER['HTTPS'] !== 'off';
+    $secure = is_https();
 
     session_set_cookie_params([
         'lifetime' => 0,
@@ -50,10 +58,73 @@ function body_json()
 }
 
 
-// Mengambil data user dari session
+// Kunci penandatanganan cookie auth agar login tetap bertahan di serverless (Vercel)
+function auth_secret()
+{
+    $base = getenv('APP_SECRET') ?: getenv('DB_PASS') ?: 'jb-garage-local-dev';
+    return hash('sha256', $base . '|jb_garage_auth_v1', true);
+}
+
+function set_auth_cookie(array $user, bool $remember = false)
+{
+    $exp = time() + ($remember ? 7 * 86400 : 86400);
+    $payload = rtrim(strtr(base64_encode(json_encode([
+        'user' => $user,
+        'exp' => $exp
+    ])), '+/', '-_'), '=');
+    $sig = rtrim(strtr(base64_encode(hash_hmac('sha256', $payload, auth_secret(), true)), '+/', '-_'), '=');
+
+    setcookie('jb_auth', $payload . '.' . $sig, [
+        'expires' => $remember ? $exp : 0,
+        'path' => '/',
+        'secure' => is_https(),
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
+}
+
+function clear_auth_cookie()
+{
+    setcookie('jb_auth', '', [
+        'expires' => time() - 42000,
+        'path' => '/',
+        'secure' => is_https(),
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
+}
+
+// Mengambil data user dari session atau cookie bertanda tangan
 function current_user()
 {
-    return $_SESSION['user'] ?? null;
+    if (!empty($_SESSION['user']) && is_array($_SESSION['user'])) {
+        return $_SESSION['user'];
+    }
+
+    $raw = $_COOKIE['jb_auth'] ?? '';
+    if (!is_string($raw) || strpos($raw, '.') === false) {
+        return null;
+    }
+
+    [$payload, $sig] = explode('.', $raw, 2);
+    $expected = rtrim(strtr(base64_encode(hash_hmac('sha256', $payload, auth_secret(), true)), '+/', '-_'), '=');
+    if (!hash_equals($expected, $sig)) {
+        return null;
+    }
+
+    $json = base64_decode(strtr($payload, '-_', '+/'), true);
+    $data = $json ? json_decode($json, true) : null;
+    if (
+        !is_array($data) ||
+        empty($data['user']) ||
+        !is_array($data['user']) ||
+        (int) ($data['exp'] ?? 0) < time()
+    ) {
+        return null;
+    }
+
+    $_SESSION['user'] = $data['user'];
+    return $data['user'];
 }
 
 

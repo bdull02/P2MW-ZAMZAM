@@ -25,7 +25,8 @@ if (ini_get('session.use_cookies')) {
 }
 
 
-// Menghancurkan session
+// Menghancurkan session dan cookie auth
+clear_auth_cookie();
 session_destroy();
 
 
