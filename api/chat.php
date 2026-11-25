@@ -283,8 +283,9 @@ if ($method === 'POST') {
 
         // Jika sudah pernah chat, pakai percakapan yang ada
         $pdo->prepare("
-            INSERT IGNORE INTO conversations (listing_id, buyer_id, seller_id)
+            INSERT INTO conversations (listing_id, buyer_id, seller_id)
             VALUES (?, ?, ?)
+            ON CONFLICT (listing_id, buyer_id) DO NOTHING
         ")->execute([$lid, $u['id'], $l['user_id']]);
 
         $q = $pdo->prepare("
@@ -312,12 +313,14 @@ if ($method === 'POST') {
 
     try {
 
-        $pdo->prepare("
+        $msgStmt = $pdo->prepare("
             INSERT INTO messages (conversation_id, sender_id, isi, harga_tawaran)
             VALUES (?, ?, ?, ?)
-        ")->execute([$cid, $u['id'], $text, $offer]);
+            RETURNING id
+        ");
+        $msgStmt->execute([$cid, $u['id'], $text, $offer]);
 
-        $mid = (int) $pdo->lastInsertId();
+        $mid = (int) $msgStmt->fetchColumn();
 
         $pdo->prepare("
             UPDATE conversations

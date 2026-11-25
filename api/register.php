@@ -73,8 +73,8 @@ try {
 
 } catch (PDOException $e) {
 
-    // Memeriksa apakah email sudah terdaftar
-    if ($e->getCode() === '23000') {
+    // Memeriksa apakah email sudah terdaftar (23505 = PostgreSQL, 23000 = MySQL)
+    if ($e->getCode() === '23505' || $e->getCode() === '23000') {
 
         respond([
             'success' => false,

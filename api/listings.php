@@ -146,6 +146,7 @@ if ($method === 'POST') {
                 status
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, 'Aktif')
+            RETURNING id
         ");
 
         $q->execute([
@@ -158,7 +159,7 @@ if ($method === 'POST') {
             $desc
         ]);
 
-        $id = (int) $pdo->lastInsertId();
+        $id = (int) $q->fetchColumn();
 
 
         // Menyiapkan folder upload
