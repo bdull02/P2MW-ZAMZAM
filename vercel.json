@@ -5,14 +5,11 @@
       "includeFiles": "config/**"
     }
   },
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/index.html"
-    },
+  "redirects": [
     {
       "source": "/index.php",
-      "destination": "/index.html"
+      "destination": "/",
+      "permanent": false
     }
   ]
 }
